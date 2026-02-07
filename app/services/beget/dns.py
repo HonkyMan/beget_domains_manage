@@ -12,32 +12,34 @@ class DnsService:
         self.client = client
 
     def _build_all_records(self, dns_data: DnsData) -> dict[str, list[dict[str, Any]]]:
-        """Build all DNS records dict preserving all types."""
+        """
+        Build DNS records dict for group 1 (A, MX, TXT).
+        
+        According to Beget API docs, there are 3 mutually exclusive groups:
+        - Group 1: A, MX, TXT (for domains and subdomains)
+        - Group 2: NS (for subdomains only)
+        - Group 3: CNAME (for subdomains only)
+        
+        When modifying A/MX/TXT records, we must send ONLY group 1 records.
+        NS and CNAME cannot be mixed with A records!
+        """
         records = {}
         
+        # Group 1: A, MX, TXT records only
         # A records
         if dns_data.a:
             records["A"] = [{"value": r.value, "priority": max(r.priority, 10)} for r in dns_data.a]
         
-        # AAAA records
-        if dns_data.aaaa:
-            records["AAAA"] = [{"value": r.value, "priority": max(r.priority, 10)} for r in dns_data.aaaa]
-        
-        # MX records
+        # MX records - preserve existing
         if dns_data.mx:
             records["MX"] = [{"value": r.value, "priority": max(r.priority, 10)} for r in dns_data.mx]
         
-        # TXT records
+        # TXT records - preserve existing
         if dns_data.txt:
             records["TXT"] = [{"value": r.value, "priority": max(r.priority, 10)} for r in dns_data.txt]
         
-        # CNAME records
-        if dns_data.cname:
-            records["CNAME"] = [{"value": r.value, "priority": max(r.priority, 10)} for r in dns_data.cname]
-        
-        # NS records
-        if dns_data.ns:
-            records["NS"] = [{"value": r.value, "priority": max(r.priority, 10)} for r in dns_data.ns]
+        # NOTE: We intentionally do NOT include NS, CNAME, AAAA here
+        # because they belong to different groups and cannot be mixed with A records
         
         return records
 
@@ -94,8 +96,14 @@ class DnsService:
         dns_list = [r.get("value", "") for r in records.get("DNS", [])]
         dns_ip_list = [r.get("value", "") for r in records.get("DNS_IP", [])]
 
+        # Get subdomain and set_type info from API response
+        is_subdomain = bool(result.get("is_subdomain", 0))
+        set_type = int(result.get("set_type", 1))
+
         return DnsData(
             fqdn=fqdn,
+            is_subdomain=is_subdomain,
+            set_type=set_type,
             dns_ip=dns_ip_list,
             dns=dns_list,
             a=a_records,

@@ -36,6 +36,8 @@ class DnsData(BaseModel):
     """DNS data for a domain."""
 
     fqdn: str
+    is_subdomain: bool = False
+    set_type: int = 1  # 1=A/MX/TXT, 2=NS, 3=CNAME
     dns_ip: list[str] = []
     dns: list[str] = []
     a: list[DnsRecord] = []
