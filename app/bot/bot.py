@@ -39,8 +39,8 @@ async def cmd_start(message: Message, is_admin: bool = False) -> None:
 async def cmd_help(message: Message, is_admin: bool = False) -> None:
     """Handle /help command."""
     help_text = (
-        "Beget Manager Bot\n\n"
-        "Commands:\n"
+        "🤖 <b>Beget Manager Bot</b>\n\n"
+        "<b>Available Commands:</b>\n"
         "/start - Main menu\n"
         "/domains - View domain list\n"
         "/help - This help message\n"
@@ -50,21 +50,30 @@ async def cmd_help(message: Message, is_admin: bool = False) -> None:
         help_text += "/admin - Admin panel\n"
     
     help_text += (
-        "\nFeatures:\n"
-        "- Browse domains and subdomains\n"
-        "- Manage DNS records (A, TXT)\n"
-        "- Create and delete subdomains\n"
+        "\n<b>Features:</b>\n"
+        "✅ Browse domains and subdomains\n"
+        "✅ Manage DNS records (A, TXT)\n"
+        "✅ Create and delete subdomains\n"
+        "✅ Auto-sync www subdomains (e.g., domain.com ↔ www.domain.com)\n"
+        "\n<b>DNS Management:</b>\n"
+        "• <b>A Records</b> - Point domain to IP address\n"
+        "• <b>TXT Records</b> - Add verification/SPF records\n"
+        "• <b>WWW Sync</b> - Changes apply to both domain and www version\n"
     )
     
     if is_admin:
         help_text += (
-            "\nAdmin features:\n"
-            "- Manage allowed chats\n"
-            "- Configure permissions\n"
-            "- View action logs\n"
+            "\n<b>Admin Features:</b>\n"
+            "👥 Manage allowed chats\n"
+            "🔐 Configure permissions\n"
+            "📊 View action logs\n"
         )
     
-    await message.answer(help_text, reply_markup=main_menu_keyboard(is_admin))
+    help_text += (
+        "\n<i>💡 Tip: DNS changes may take 5-15 minutes to propagate globally.</i>"
+    )
+    
+    await message.answer(help_text, reply_markup=main_menu_keyboard(is_admin), parse_mode="HTML")
 
 
 @base_router.message(F.text == "/domains")

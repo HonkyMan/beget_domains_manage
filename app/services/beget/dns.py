@@ -173,13 +173,10 @@ class DnsService:
         
         try:
             # Directly apply the same records to www version
-            # This works because www usually has the same record structure
-            logger.info(f"_apply_to_www: Syncing to {www_fqdn} with records: {records}")
             await self.change_records(www_fqdn, records)
-            logger.info(f"_apply_to_www: Successfully synced {www_fqdn}")
         except Exception as e:
-            # Log the error but don't fail the main operation
-            logger.warning(f"_apply_to_www: Failed to sync {www_fqdn}: {e}")
+            # Log only errors, not successful syncs
+            logger.warning(f"Failed to sync www subdomain {www_fqdn}: {e}")
 
     async def add_a_record(self, fqdn: str, ip: str, sync_www: bool = True) -> bool:
         """Add A record. Also updates www version if sync_www=True."""
