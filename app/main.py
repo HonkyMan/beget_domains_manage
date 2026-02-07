@@ -5,12 +5,16 @@ import logging
 
 from app.bot.bot import setup_bot
 
+# Version identifier for debugging
+APP_VERSION = "1.0.1-fix-error-handling"
+
 
 async def main() -> None:
     """Main application entry point."""
     bot, dp, container = await setup_bot()
     
     logger = logging.getLogger(__name__)
+    logger.info(f"App version: {APP_VERSION}")
 
     try:
         logger.info("Starting bot...")

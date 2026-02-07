@@ -93,9 +93,15 @@ class DnsService:
             records: Dict with record types as keys (A, AAAA, MX, TXT, CNAME, NS)
                     and lists of {"value": str, "priority": int} as values
         """
+        import logging
+        logger = logging.getLogger(__name__)
+        
         # Beget API requires "records" wrapper
         params = {"fqdn": fqdn, "records": records}
         result = await self.client.request("dns/changeRecords", params)
+        
+        # Log the result for debugging
+        logger.info(f"changeRecords result type: {type(result)}, value: {result}")
         
         # API returns result structure, check if it's successful
         if isinstance(result, dict):
