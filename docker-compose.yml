@@ -3,7 +3,12 @@ services:
     build: .
     container_name: beget-manager-bot
     restart: unless-stopped
-    env_file: .env
+    environment:
+      - BOT_TOKEN=${BOT_TOKEN}
+      - ADMIN_IDS=${ADMIN_IDS}
+      - BEGET_LOGIN=${BEGET_LOGIN}
+      - BEGET_PASSWORD=${BEGET_PASSWORD}
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
     volumes:
       - ./data:/app/data
     logging:
