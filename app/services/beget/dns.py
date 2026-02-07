@@ -45,11 +45,7 @@ class DnsService:
 
     async def get_dns_data(self, fqdn: str) -> DnsData:
         """Get DNS records for a domain."""
-        import logging
-        logger = logging.getLogger(__name__)
-        
         result = await self.client.request("dns/getData", {"fqdn": fqdn})
-        logger.info(f"get_dns_data: Raw API response for {fqdn}: {result}")
         
         if not result:
             return DnsData(fqdn=fqdn)
@@ -136,58 +132,80 @@ class DnsService:
             records: Dict with record types as keys (A, AAAA, MX, TXT, CNAME, NS)
                     and lists of {"value": str, "priority": int} as values
         """
-        import logging
-        logger = logging.getLogger(__name__)
-        
         # Beget API requires "records" wrapper
         params = {"fqdn": fqdn, "records": records}
         result = await self.client.request("dns/changeRecords", params)
         
-        # Log the result for debugging
-        logger.info(f"changeRecords result type: {type(result)}, value: {result}")
-        
         # API returns result structure, check if it's successful
         if isinstance(result, dict):
-            # If result contains 'result' key with data, it's successful
             if "result" in result:
                 return True
-            # If result has status field and it's success/ok
             status = result.get("status", "").lower()
             if status in ("success", "ok", "done"):
                 return True
         
-        # If we got any non-error response, consider it successful
         return True
 
-    async def add_a_record(self, fqdn: str, ip: str) -> bool:
-        """Add or update A record."""
-        import logging
-        logger = logging.getLogger(__name__)
+    def _get_www_fqdn(self, fqdn: str) -> str | None:
+        """
+        Get www version of the domain.
         
+        Examples:
+            example.com -> www.example.com
+            sub.example.com -> www.sub.example.com
+            www.example.com -> None (already www)
+        """
+        if fqdn.startswith("www."):
+            return None
+        return f"www.{fqdn}"
+
+    async def _apply_to_www(self, fqdn: str, records: dict[str, list[dict[str, Any]]]) -> None:
+        """
+        Apply the same records to www version of the domain.
+        Silently ignores errors (www might not exist or have different config).
+        """
+        www_fqdn = self._get_www_fqdn(fqdn)
+        if not www_fqdn:
+            return
+        
+        try:
+            # Get current www DNS data to preserve MX/TXT if different
+            www_current = await self.get_dns_data(www_fqdn)
+            www_records = self._build_all_records(www_current)
+            
+            # Apply the same A or TXT records
+            if "A" in records:
+                www_records["A"] = records["A"]
+            if "TXT" in records:
+                www_records["TXT"] = records["TXT"]
+            
+            await self.change_records(www_fqdn, www_records)
+        except Exception:
+            # Silently ignore www errors - it might not exist or be configured differently
+            pass
+
+    async def add_a_record(self, fqdn: str, ip: str, sync_www: bool = True) -> bool:
+        """Add A record. Also updates www version if sync_www=True."""
         current = await self.get_dns_data(fqdn)
         
-        # Log current DNS state for debugging
-        logger.info(f"add_a_record: fqdn={fqdn}, is_subdomain={current.is_subdomain}, set_type={current.set_type}")
-        logger.info(f"add_a_record: current A={[r.value for r in current.a]}, MX={[r.value for r in current.mx]}, TXT={[r.value for r in current.txt]}")
-        logger.info(f"add_a_record: current NS={[r.value for r in current.ns]}, CNAME={[r.value for r in current.cname]}")
-        
-        # Build records with priority (required, must be > 0)
+        # Build records with priority
         a_records = [{"value": r.value, "priority": max(r.priority, 10)} for r in current.a]
-        # Add new record with next priority
         next_priority = (len(a_records) + 1) * 10
         a_records.append({"value": ip, "priority": next_priority})
         
-        # IMPORTANT: Must preserve all other record types to avoid conflicts
         records = self._build_all_records(current)
         records["A"] = a_records
         
-        logger.info(f"add_a_record: Sending records with types: {list(records.keys())}")
-        logger.info(f"add_a_record: Records payload: {records}")
+        result = await self.change_records(fqdn, records)
         
-        return await self.change_records(fqdn, records)
+        # Sync to www version
+        if sync_www:
+            await self._apply_to_www(fqdn, records)
+        
+        return result
 
-    async def update_a_record(self, fqdn: str, old_ip: str, new_ip: str) -> bool:
-        """Update an existing A record."""
+    async def update_a_record(self, fqdn: str, old_ip: str, new_ip: str, sync_www: bool = True) -> bool:
+        """Update an existing A record. Also updates www version if sync_www=True."""
         current = await self.get_dns_data(fqdn)
         a_records = []
         for i, r in enumerate(current.a):
@@ -197,14 +215,18 @@ class DnsService:
             else:
                 a_records.append({"value": r.value, "priority": priority})
         
-        # Preserve all other record types
         records = self._build_all_records(current)
         records["A"] = a_records
         
-        return await self.change_records(fqdn, records)
+        result = await self.change_records(fqdn, records)
+        
+        if sync_www:
+            await self._apply_to_www(fqdn, records)
+        
+        return result
 
-    async def delete_a_record(self, fqdn: str, ip: str) -> bool:
-        """Delete an A record."""
+    async def delete_a_record(self, fqdn: str, ip: str, sync_www: bool = True) -> bool:
+        """Delete an A record. Also updates www version if sync_www=True."""
         current = await self.get_dns_data(fqdn)
         a_records = []
         priority = 10
@@ -213,27 +235,35 @@ class DnsService:
                 a_records.append({"value": r.value, "priority": priority})
                 priority += 10
         
-        # Preserve all other record types
         records = self._build_all_records(current)
         records["A"] = a_records
         
-        return await self.change_records(fqdn, records)
+        result = await self.change_records(fqdn, records)
+        
+        if sync_www:
+            await self._apply_to_www(fqdn, records)
+        
+        return result
 
-    async def add_txt_record(self, fqdn: str, value: str) -> bool:
-        """Add a TXT record."""
+    async def add_txt_record(self, fqdn: str, value: str, sync_www: bool = True) -> bool:
+        """Add a TXT record. Also updates www version if sync_www=True."""
         current = await self.get_dns_data(fqdn)
         txt_records = [{"value": r.value, "priority": max(r.priority, 10)} for r in current.txt]
         next_priority = (len(txt_records) + 1) * 10
         txt_records.append({"value": value, "priority": next_priority})
         
-        # Preserve all other record types
         records = self._build_all_records(current)
         records["TXT"] = txt_records
         
-        return await self.change_records(fqdn, records)
+        result = await self.change_records(fqdn, records)
+        
+        if sync_www:
+            await self._apply_to_www(fqdn, records)
+        
+        return result
 
-    async def delete_txt_record(self, fqdn: str, value: str) -> bool:
-        """Delete a TXT record."""
+    async def delete_txt_record(self, fqdn: str, value: str, sync_www: bool = True) -> bool:
+        """Delete a TXT record. Also updates www version if sync_www=True."""
         current = await self.get_dns_data(fqdn)
         txt_records = []
         priority = 10
@@ -242,8 +272,12 @@ class DnsService:
                 txt_records.append({"value": r.value, "priority": priority})
                 priority += 10
         
-        # Preserve all other record types
         records = self._build_all_records(current)
         records["TXT"] = txt_records
         
-        return await self.change_records(fqdn, records)
+        result = await self.change_records(fqdn, records)
+        
+        if sync_www:
+            await self._apply_to_www(fqdn, records)
+        
+        return result

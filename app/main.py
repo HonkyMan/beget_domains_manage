@@ -6,7 +6,7 @@ import logging
 from app.bot.bot import setup_bot
 
 # Version identifier for debugging
-APP_VERSION = "1.0.4-debug-dns-response"
+APP_VERSION = "1.1.0-www-sync"
 
 
 async def main() -> None:
