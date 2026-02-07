@@ -304,10 +304,6 @@ docker-compose up -d --build
 - **pydantic 2.x** - Settings and data validation
 - **Docker & Docker Compose** - Containerization
 
-## License
-
-[Your License Here]
-
 ## Support
 
 If you encounter any issues or have questions, please:

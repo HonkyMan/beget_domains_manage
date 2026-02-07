@@ -162,8 +162,11 @@ class DnsService:
     async def _apply_to_www(self, fqdn: str, records: dict[str, list[dict[str, Any]]]) -> None:
         """
         Apply the same records to www version of the domain.
-        Silently ignores errors (www might not exist or have different config).
+        Logs errors instead of silently ignoring.
         """
+        import logging
+        logger = logging.getLogger(__name__)
+        
         www_fqdn = self._get_www_fqdn(fqdn)
         if not www_fqdn:
             return
@@ -179,10 +182,12 @@ class DnsService:
             if "TXT" in records:
                 www_records["TXT"] = records["TXT"]
             
+            logger.info(f"_apply_to_www: Syncing to {www_fqdn} with records: {www_records}")
             await self.change_records(www_fqdn, www_records)
-        except Exception:
-            # Silently ignore www errors - it might not exist or be configured differently
-            pass
+            logger.info(f"_apply_to_www: Successfully synced {www_fqdn}")
+        except Exception as e:
+            # Log the error but don't fail the main operation
+            logger.warning(f"_apply_to_www: Failed to sync {www_fqdn}: {e}")
 
     async def add_a_record(self, fqdn: str, ip: str, sync_www: bool = True) -> bool:
         """Add A record. Also updates www version if sync_www=True."""
