@@ -2,6 +2,8 @@
 
 from functools import lru_cache
 from pathlib import Path
+from typing import Any
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -27,6 +29,22 @@ class Settings(BaseSettings):
 
     # Paths
     data_dir: Path = Path("data")
+
+    @field_validator('admin_chat_id', mode='before')
+    @classmethod
+    def validate_admin_chat_id(cls, v: Any) -> int:
+        """Validate and convert admin_chat_id."""
+        if v is None or v == '' or (isinstance(v, str) and v.strip() == ''):
+            raise ValueError(
+                "ADMIN_CHAT_ID environment variable is not set or empty. "
+                "Please set it in Portainer Environment Variables (e.g., ADMIN_CHAT_ID=123456789)"
+            )
+        try:
+            return int(v)
+        except (ValueError, TypeError):
+            raise ValueError(
+                f"ADMIN_CHAT_ID must be a valid integer (your Telegram user ID), got: {v!r}"
+            )
 
     @property
     def db_path(self) -> Path:
