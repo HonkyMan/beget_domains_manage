@@ -276,6 +276,9 @@ async def receive_new_a_ip(
     container: DependencyContainer,
 ) -> None:
     """Receive IP for new A record."""
+    import logging
+    logger = logging.getLogger(__name__)
+    
     ip = message.text.strip()
     ctx = StateContext(state)
     fqdn, _ = await ctx.get_dns()
@@ -292,7 +295,9 @@ async def receive_new_a_ip(
             await dns_service.add_a_record(fqdn, ip)
         await message.answer(f"A record {ip} added to {fqdn}!")
     except Exception as e:
-        await message.answer(f"Error: {e}")
+        logger.error(f"Error adding A record: {type(e).__name__}: {e}", exc_info=True)
+        error_msg = str(e) if str(e) else f"{type(e).__name__}: Unknown error"
+        await message.answer(f"Error: {error_msg}")
 
     await state.clear()
 

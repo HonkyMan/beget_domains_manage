@@ -16,6 +16,22 @@ class BegetApiError(Exception):
     def __init__(self, message: str, errors: list[str] | None = None):
         super().__init__(message)
         self.errors = errors or []
+        self.message = message
+    
+    def __str__(self) -> str:
+        """Return string representation of the error."""
+        if not self.errors:
+            return self.message
+        # Safely convert all errors to strings
+        error_strs = []
+        for err in self.errors:
+            if isinstance(err, dict):
+                # Extract text from dict
+                error_text = err.get("error_text", err.get("error_code", str(err)))
+                error_strs.append(str(error_text))
+            else:
+                error_strs.append(str(err))
+        return f"{self.message}. Details: {', '.join(error_strs)}"
 
 
 class BegetClient:
