@@ -45,7 +45,12 @@ class DnsService:
 
     async def get_dns_data(self, fqdn: str) -> DnsData:
         """Get DNS records for a domain."""
+        import logging
+        logger = logging.getLogger(__name__)
+        
         result = await self.client.request("dns/getData", {"fqdn": fqdn})
+        logger.info(f"get_dns_data: Raw API response for {fqdn}: {result}")
+        
         if not result:
             return DnsData(fqdn=fqdn)
         
@@ -160,6 +165,12 @@ class DnsService:
         logger = logging.getLogger(__name__)
         
         current = await self.get_dns_data(fqdn)
+        
+        # Log current DNS state for debugging
+        logger.info(f"add_a_record: fqdn={fqdn}, is_subdomain={current.is_subdomain}, set_type={current.set_type}")
+        logger.info(f"add_a_record: current A={[r.value for r in current.a]}, MX={[r.value for r in current.mx]}, TXT={[r.value for r in current.txt]}")
+        logger.info(f"add_a_record: current NS={[r.value for r in current.ns]}, CNAME={[r.value for r in current.cname]}")
+        
         # Build records with priority (required, must be > 0)
         a_records = [{"value": r.value, "priority": max(r.priority, 10)} for r in current.a]
         # Add new record with next priority
