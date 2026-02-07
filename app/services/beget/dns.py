@@ -162,7 +162,7 @@ class DnsService:
     async def _apply_to_www(self, fqdn: str, records: dict[str, list[dict[str, Any]]]) -> None:
         """
         Apply the same records to www version of the domain.
-        Logs errors instead of silently ignoring.
+        Directly sends the same records without fetching www data first.
         """
         import logging
         logger = logging.getLogger(__name__)
@@ -172,18 +172,10 @@ class DnsService:
             return
         
         try:
-            # Get current www DNS data to preserve MX/TXT if different
-            www_current = await self.get_dns_data(www_fqdn)
-            www_records = self._build_all_records(www_current)
-            
-            # Apply the same A or TXT records
-            if "A" in records:
-                www_records["A"] = records["A"]
-            if "TXT" in records:
-                www_records["TXT"] = records["TXT"]
-            
-            logger.info(f"_apply_to_www: Syncing to {www_fqdn} with records: {www_records}")
-            await self.change_records(www_fqdn, www_records)
+            # Directly apply the same records to www version
+            # This works because www usually has the same record structure
+            logger.info(f"_apply_to_www: Syncing to {www_fqdn} with records: {records}")
+            await self.change_records(www_fqdn, records)
             logger.info(f"_apply_to_www: Successfully synced {www_fqdn}")
         except Exception as e:
             # Log the error but don't fail the main operation
