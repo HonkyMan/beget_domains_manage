@@ -6,8 +6,8 @@ services:
     env_file:
       - .env
     environment:
-      - BOT_TOKEN=${BOT_TOKEN}
-      - ADMIN_IDS=${ADMIN_IDS}
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
+      - ADMIN_CHAT_ID=${ADMIN_CHAT_ID}
       - BEGET_LOGIN=${BEGET_LOGIN}
       - BEGET_PASSWORD=${BEGET_PASSWORD}
       - LOG_LEVEL=${LOG_LEVEL:-INFO}
