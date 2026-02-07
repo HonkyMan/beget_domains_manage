@@ -11,6 +11,36 @@ class DnsService:
     def __init__(self, client: BegetClient):
         self.client = client
 
+    def _build_all_records(self, dns_data: DnsData) -> dict[str, list[dict[str, Any]]]:
+        """Build all DNS records dict preserving all types."""
+        records = {}
+        
+        # A records
+        if dns_data.a:
+            records["A"] = [{"value": r.value, "priority": max(r.priority, 10)} for r in dns_data.a]
+        
+        # AAAA records
+        if dns_data.aaaa:
+            records["AAAA"] = [{"value": r.value, "priority": max(r.priority, 10)} for r in dns_data.aaaa]
+        
+        # MX records
+        if dns_data.mx:
+            records["MX"] = [{"value": r.value, "priority": max(r.priority, 10)} for r in dns_data.mx]
+        
+        # TXT records
+        if dns_data.txt:
+            records["TXT"] = [{"value": r.value, "priority": max(r.priority, 10)} for r in dns_data.txt]
+        
+        # CNAME records
+        if dns_data.cname:
+            records["CNAME"] = [{"value": r.value, "priority": max(r.priority, 10)} for r in dns_data.cname]
+        
+        # NS records
+        if dns_data.ns:
+            records["NS"] = [{"value": r.value, "priority": max(r.priority, 10)} for r in dns_data.ns]
+        
+        return records
+
     async def get_dns_data(self, fqdn: str) -> DnsData:
         """Get DNS records for a domain."""
         result = await self.client.request("dns/getData", {"fqdn": fqdn})
@@ -124,7 +154,12 @@ class DnsService:
         # Add new record with next priority
         next_priority = (len(a_records) + 1) * 10
         a_records.append({"value": ip, "priority": next_priority})
-        return await self.change_records(fqdn, {"A": a_records})
+        
+        # IMPORTANT: Must preserve all other record types to avoid conflicts
+        records = self._build_all_records(current)
+        records["A"] = a_records
+        
+        return await self.change_records(fqdn, records)
 
     async def update_a_record(self, fqdn: str, old_ip: str, new_ip: str) -> bool:
         """Update an existing A record."""
@@ -136,7 +171,12 @@ class DnsService:
                 a_records.append({"value": new_ip, "priority": priority})
             else:
                 a_records.append({"value": r.value, "priority": priority})
-        return await self.change_records(fqdn, {"A": a_records})
+        
+        # Preserve all other record types
+        records = self._build_all_records(current)
+        records["A"] = a_records
+        
+        return await self.change_records(fqdn, records)
 
     async def delete_a_record(self, fqdn: str, ip: str) -> bool:
         """Delete an A record."""
@@ -147,7 +187,12 @@ class DnsService:
             if r.value != ip:
                 a_records.append({"value": r.value, "priority": priority})
                 priority += 10
-        return await self.change_records(fqdn, {"A": a_records})
+        
+        # Preserve all other record types
+        records = self._build_all_records(current)
+        records["A"] = a_records
+        
+        return await self.change_records(fqdn, records)
 
     async def add_txt_record(self, fqdn: str, value: str) -> bool:
         """Add a TXT record."""
@@ -155,7 +200,12 @@ class DnsService:
         txt_records = [{"value": r.value, "priority": max(r.priority, 10)} for r in current.txt]
         next_priority = (len(txt_records) + 1) * 10
         txt_records.append({"value": value, "priority": next_priority})
-        return await self.change_records(fqdn, {"TXT": txt_records})
+        
+        # Preserve all other record types
+        records = self._build_all_records(current)
+        records["TXT"] = txt_records
+        
+        return await self.change_records(fqdn, records)
 
     async def delete_txt_record(self, fqdn: str, value: str) -> bool:
         """Delete a TXT record."""
@@ -166,4 +216,9 @@ class DnsService:
             if r.value != value:
                 txt_records.append({"value": r.value, "priority": priority})
                 priority += 10
-        return await self.change_records(fqdn, {"TXT": txt_records})
+        
+        # Preserve all other record types
+        records = self._build_all_records(current)
+        records["TXT"] = txt_records
+        
+        return await self.change_records(fqdn, records)
