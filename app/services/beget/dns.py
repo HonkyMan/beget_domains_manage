@@ -95,7 +95,19 @@ class DnsService:
         """
         # Beget API requires "records" wrapper
         params = {"fqdn": fqdn, "records": records}
-        await self.client.request("dns/changeRecords", params)
+        result = await self.client.request("dns/changeRecords", params)
+        
+        # API returns result structure, check if it's successful
+        if isinstance(result, dict):
+            # If result contains 'result' key with data, it's successful
+            if "result" in result:
+                return True
+            # If result has status field and it's success/ok
+            status = result.get("status", "").lower()
+            if status in ("success", "ok", "done"):
+                return True
+        
+        # If we got any non-error response, consider it successful
         return True
 
     async def add_a_record(self, fqdn: str, ip: str) -> bool:

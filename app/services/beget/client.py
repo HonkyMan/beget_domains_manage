@@ -128,7 +128,7 @@ class BegetClient:
             if isinstance(err, dict):
                 # Format: {"error_code": "...", "error_text": "..."}
                 text = err.get("error_text", err.get("error_code", str(err)))
-                messages.append(text)
+                messages.append(str(text))  # Ensure it's string
             else:
-                messages.append(str(err))
+                messages.append(str(err))  # Convert to string
         return "; ".join(messages)
