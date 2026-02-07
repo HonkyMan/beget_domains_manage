@@ -1,0 +1,1 @@
+"""Beget Manager Telegram Bot."""
