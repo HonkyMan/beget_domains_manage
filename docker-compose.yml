@@ -3,8 +3,6 @@ services:
     build: .
     container_name: beget-manager-bot
     restart: unless-stopped
-    env_file:
-      - .env
     environment:
       - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
       - ADMIN_CHAT_ID=${ADMIN_CHAT_ID}
