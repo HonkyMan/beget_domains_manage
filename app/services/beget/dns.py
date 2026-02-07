@@ -148,6 +148,9 @@ class DnsService:
 
     async def add_a_record(self, fqdn: str, ip: str) -> bool:
         """Add or update A record."""
+        import logging
+        logger = logging.getLogger(__name__)
+        
         current = await self.get_dns_data(fqdn)
         # Build records with priority (required, must be > 0)
         a_records = [{"value": r.value, "priority": max(r.priority, 10)} for r in current.a]
@@ -158,6 +161,9 @@ class DnsService:
         # IMPORTANT: Must preserve all other record types to avoid conflicts
         records = self._build_all_records(current)
         records["A"] = a_records
+        
+        logger.info(f"add_a_record: Sending records with types: {list(records.keys())}")
+        logger.info(f"add_a_record: Records payload: {records}")
         
         return await self.change_records(fqdn, records)
 

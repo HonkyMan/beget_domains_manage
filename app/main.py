@@ -6,7 +6,7 @@ import logging
 from app.bot.bot import setup_bot
 
 # Version identifier for debugging
-APP_VERSION = "1.0.1-fix-error-handling"
+APP_VERSION = "1.0.2-fix-dns-conflicts"
 
 
 async def main() -> None:
